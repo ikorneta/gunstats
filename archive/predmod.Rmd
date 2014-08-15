@@ -1,0 +1,32 @@
+---
+title: "Predicting gun ownership among young white males"
+author: "Iga Korneta"
+date: "Friday, August 15, 2014"
+output: html_document
+---
+
+Here, I describe an attempt to predict personal gun ownership among post-2004 young white males - from their opinions on some topics.
+
+```{r loadchunk, echo=FALSE, message=FALSE}
+library(plyr)
+library(ggplot2)
+library(caret)
+
+gss.swing <- read.delim("../data/gss.statwing.gun.txt")
+gss.swing <- gss.swing[gss.swing$ars=="YWM" & gss.swing$year >2003,]
+gss.swing$gunowned.temp <- as.factor(ifelse(is.na(gss.swing$gunowned), "No", as.character(gss.swing$gunowned)))
+gss.swing.min <- gss.swing[,c(45, 30, 38)]
+gss.swing.mspank <- gss.swing.min[!is.na(gss.swing.min$spanking) & gss.swing.min$spanking!="Dont Know" & gss.swing.min$housdisc!="Dont Know",]
+gss.swing.mspank$spanking <- as.factor(ifelse(gss.swing.mspank$spanking %in% c("Agree", "Strongly Agree"), "Agree", "Disagree"))
+```
+
+Since it's just for fun, let's try a random forest:
+
+```{r loadchunk, echo=TRUE, message=FALSE}
+inTrain <- createDataPartition(y=gss.swing.mspank$gunowned.temp, p=0.7, list=FALSE)
+training <- gss.swing.mspank[inTrain,]
+testing <- gss.swing.mspank[-inTrain,]
+modFit <- train(gunowned.temp~., data=training, method="rf", prox=TRUE)
+pred <- predict(modFit, testing)
+```
+

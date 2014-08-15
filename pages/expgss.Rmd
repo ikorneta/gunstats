@@ -1,0 +1,246 @@
+---
+title: "GSS Data, Gun Ownership - Descriptive/Exploratory Analysis (GSS Data)"
+author: "Iga Korneta"
+date: "Thursday, August 14, 2014"
+output: html_document
+---
+
+Graphs and results of exploratory analysis of GSS data regarding gun ownership. 
+
+As a reminder, groups are defined via a three letter code. For example, YOF is young (<40) "other race" (nonwhite, nonblack), female.
+
+### Gun ownership over the years
+
+#### Household gun ownership by year by group
+
+These data come from the "course" set.
+
+```{r household, echo=FALSE, message=FALSE, fig.align='center', fig.height=4}
+library(plyr)
+library(ggplot2)
+gss <- read.csv("../data/gss.course.csv")
+
+###splitting by cross-tabs
+gss.course <- gss[!is.na(gss$owngun) & gss$owngun!="Refused" & !is.na(gss$age),]
+gss.course$ars <- ifelse(gss.course$age<40, "Y", "O")
+gss.course$ars <- ifelse(gss.course$race=="White", paste0(gss.course$ars,"W"), ifelse(gss.course$race=="Black", paste0(gss.course$ars,"B"), paste0(gss.course$ars,"O")))
+gss.course$ars <- ifelse(gss.course$sex=="Female", paste0(gss.course$ars,"F"), paste0(gss.course$ars, "M"))
+#gss.course$arsg <- ifelse(gss.course$owngun=="Yes", paste0(gss.course$ars,"G"), paste0(gss.course$ars,"N"))
+
+#gss.course$arsg <- as.factor(gss.course$arsg)
+gss.course$ars <- factor(as.factor(gss.course$ars), levels=c("OWM", "OWF", "YWM", "YWF", "OBM", "OBF", "YBM", "YBF", "OOM", "OOF", "YOM", "YOF"))
+
+temp11 <- adply(tapply(gss.course$owngun=="Yes", gss.course[, c(3,116)], sum), c(1,2))
+temp12 <- adply(tapply(!is.na(gss.course$owngun), gss.course[, c(3,116)], sum), c(1,2))
+temp11$freq <- temp11$V1/temp12$V1*100
+
+p1 <- ggplot(temp11[!is.na(temp11$freq),], aes(x=year, y=freq, group=1, color=ars))
+p1 <- p1 + geom_smooth() +facet_wrap(~ars) +theme_bw()+xlab("Year")+ylab("Household gun ownership rates")+theme(legend.position="none", axis.text.x=element_text(angle=30, size=5))
+p1 <- p1
+p1
+```
+
+#### Personal gun ownership by year by group
+
+These data come from the "Statwing" set, as the "course" set does not contain data on personal gun ownership.
+
+```{r personal, echo=FALSE, message=FALSE, fig.align='center', fig.height=4}
+gss.swing <- read.delim("../data/gss.statwing.gun.txt")
+gss.swing$ars <- factor(gss.swing$ars, levels=c("OWM", "OWF", "YWM", "YWF", "OBM", "OBF", "YBM", "YBF", "OOM", "OOF", "YOM", "YOF"))
+
+temp21 <- adply(tapply(gss.swing$gunowned=="Yes" & gss.swing$year>1976, gss.swing[, c(1,43)], sum, na.rm=TRUE), c(1,2))
+temp22 <- adply(tapply(!is.na(gss.swing$guninhome) & gss.swing$year>1976, gss.swing[, c(1,43)], sum), c(1,2))
+temp21$freq <- temp21$V1/temp22$V1*100
+
+p2 <- ggplot(temp21[!is.na(temp21$freq),], aes(x=year, y=freq, group=1, color=ars))
+p2 <- p2 + geom_smooth() + facet_wrap(~ars) 
+p2 <- p2 +theme_bw()+xlab("Year")+ylab("Personal gun ownership rates")+theme(legend.position="none", axis.text.x=element_text(angle=30, size=5))
+p2 <- p2
+p2
+```
+
+The values for the nonwhite-, nonblack-group are burdened with a high margin of error. This is because the sample sizes are extremely small for these groups.
+
+Here are the coefficients of linear regression for all the white and black subgroups:
+
+```{r lm, echo=FALSE}
+temp <- data.frame()
+for (x in levels(temp21$ars)) {
+mtemp <- adply(summary(lm(freq~ as.numeric(year), data=temp21[temp21$ars==x,]))$coefficients, c(1))
+temp[x, "Slope estimate"] <- sprintf("%3.2f",mtemp[2,2])
+temp[x, "p-value"] <- sprintf("%3.3g", mtemp[2,5])
+  }
+print(temp[1:8,])
+```
+
+The young white male (YWM) group experienced a pretty unique, and significant, drop in gun ownership rates in the time period between 1974-2012.
+
+This moving cloud shows the histograms of gun ownership among white males in subsequent GSS's:
+
+```{r movcloud, echo=FALSE, message=FALSE, fig.align='center', fig.height=4}
+gss.swing.temp <- gss.swing[gss.swing$year>1976 & gss.swing$race=="White" & gss.swing$sex=="Male",]
+gss.swing.temp$age <- as.factor(gss.swing.temp$age)
+temp31 <- adply(tapply(gss.swing.temp$gunowned=="Yes", gss.swing.temp[,c(1,2)], sum, na.rm=TRUE), c(1,2))
+temp32 <- adply(tapply(!is.na(gss.swing.temp$guninhome) , gss.swing.temp[, c(1,2)], sum), c(1,2))
+temp31$freq <- temp31$V1/temp32$V1*100
+
+p3 <- ggplot(temp31[!is.na(temp31$freq),], aes(x=age, y=freq, group=1, color=year))
+p3 <- p3 + geom_smooth() + facet_wrap(~year) 
+p3 <- p3 +theme_bw()+xlab("Age")+ylab("Personal gun ownership rates")+theme(legend.position="none", axis.text.x=element_text(angle=30, size=5))
+p3
+```
+
+### Household gun ownership vs. US countrywide homicide rates
+
+```{r homicide, echo=FALSE, message=FALSE, fig.align='center', fig.height=4}
+stats.crime <- read.delim("C:/Users/Iga/Desktop/gunstats/data/stats.crime.txt")
+
+###plotting
+temp21.hom <- merge(temp21, stats.crime[,c(1,6)], by.x="year", by.y="Year.")
+temp21.hom <- temp21.hom[!(temp21.hom$ars %in% c("OOM", "OOF", "YOM", "YOF")),]
+
+p5 <- ggplot(temp21.hom[!is.na(temp21.hom$freq),], aes(x=freq, y=Murder., group=1, color=ars))
+p5 <- p5 + geom_point() + facet_wrap(~ars)
+p5 <- p5 +theme_bw()+xlab("Personal gun ownership rates")+ylab("Homicide")+theme(legend.position="none", axis.text.x=element_text(angle=30, size=5))
+p5
+
+### linear model
+temp22.hom <- adply(tapply(gss.swing$gunowned=="Yes", gss.swing[, c(1,43)], sum, na.rm=TRUE), c(1))
+temp23.hom <- adply(tapply(!is.na(gss.swing$guninhome), gss.swing[, c(1,43)], sum), c(1))
+temp22.hom <- cbind(year=temp22.hom$year, temp22.hom[,c(2:13)]/temp23.hom[,c(2:13)]*100)
+temp22.hom <- temp22.hom[!temp22.hom$year %in% c("1974", "1976"), ]
+temp22.hom <- merge(temp22.hom, stats.crime[,c(1,6)], by.x="year", by.y="Year.")
+
+lm1 <- lm(data=temp22.hom, Murder.~YWM+YBM)
+summary(lm1)
+```
+
+The linear model is for personal gun ownership data. 
+
+Is it a spurious correlation? Possibly.
+
+******
+
+### Household gun ownership vs. marital status, post-2008 cohorts
+
+"Single" people are defined as either of: never married, divorced, widowed.
+
+"Course" data.
+
+```{r marital1, echo=FALSE, message=FALSE, fig.align='center', fig.height=4}
+gss.course.noother.2008 <- gss.course[gss.course$year>2003 & gss.course$race!="Other",]
+gss.course.noother.2008$arsm <- ifelse(gss.course.noother.2008$marital=="Married", paste0(gss.course.noother.2008$ars,"M"), paste0(gss.course.noother.2008$ars,"S"))
+gss.course.noother.2008$arsm <- factor(as.factor(gss.course.noother.2008$arsm), levels=c("OWMM", "OWMS", "OWFM", "OWFS", "YWMM", "YWMS", "YWFM", "YWFS", "OBMM", "OBMS", "OBFM", "OBFS", "YBMM", "YBMS", "YBFM", "YBFS"))
+
+tempm1 <- adply(tapply(gss.course.noother.2008$owngun=="Yes", gss.course.noother.2008$arsm, sum, na.rm=TRUE), c(1))
+tempm2 <- adply(tapply(!is.na(gss.course.noother.2008$owngun), gss.course.noother.2008$arsm, sum), c(1))
+tempm1$freq <- tempm1[,c(2)]/tempm2[,c(2)]*100
+
+p6 <- ggplot(tempm1[!is.na(tempm1$freq),], aes(x=X1, y=freq, group=1, fill=X1, alpha=c(rep(0.9,4), 1, 1, rep(0.9, 10))))
+p6 <- p6 + geom_bar(stat="identity")
+p6 <- p6 +theme_bw()+xlab("Group")+ylab("Household gun ownership")+theme(legend.position="none")
+p6
+```
+
+Young white males are the only group with essentially no difference between household gun ownership rates among the married and unmarried. In fact:
+
+```{r marital2, echo=FALSE, message=FALSE, fig.align='center', fig.height=4}
+gss.course.noother.2008 <- gss.course[gss.course$year>2007 & gss.course$race!="Other",]
+gss.course.noother.2008$arsm <- ifelse(gss.course.noother.2008$marital=="Married", paste0(gss.course.noother.2008$ars,"M"), paste0(gss.course.noother.2008$ars,"S"))
+gss.course.noother.2008$arsm <- factor(as.factor(gss.course.noother.2008$arsm), levels=c("OWMM", "OWMS", "OWFM", "OWFS", "YWMM", "YWMS", "YWFM", "YWFS", "OBMM", "OBMS", "OBFM", "OBFS", "YBMM", "YBMS", "YBFM", "YBFS"))
+
+tempm1 <- adply(tapply(gss.course.noother.2008$owngun=="Yes", gss.course.noother.2008$arsm, sum, na.rm=TRUE), c(1))
+tempm2 <- adply(tapply(!is.na(gss.course.noother.2008$owngun), gss.course.noother.2008$arsm, sum), c(1))
+tempm1$freq <- tempm1[,c(2)]/tempm2[,c(2)]*100
+
+p7 <- ggplot(tempm1[!is.na(tempm1$freq),], aes(x=X1, y=freq, group=1, fill=X1, alpha=c(rep(0.9,4), 1, 1, rep(0.9, 10))))
+p7 <- p7 + geom_bar(stat="identity")
+p7 <- p7 +theme_bw()+xlab("Group")+ylab("Household gun ownership")+theme(legend.position="none")
+p7
+```
+
+... for the 2008 cohorts onwards, the sign of the difference switches.
+
+
+### Personal gun ownership among young white males vs. marital status, region, political identity, party affiliation (historical data)
+
+Married vs. single:
+
+```{r marital3, echo=FALSE, message=FALSE, fig.align='center', fig.height=2}
+gss.swing.hist <- gss.swing[gss.swing$ars=="YWM"& !(gss.swing$year %in% c("1974", "1976")),]
+
+gss.swing.hist$arsm <- as.factor(ifelse(gss.swing.hist$marital=="Married", "Married", "Single"))
+
+tempmar <- adply(tapply(gss.swing.hist$gunowned=="Yes", gss.swing.hist[, c(1,45)], sum, na.rm=TRUE), c(1, 2))
+tempmar2 <- adply(tapply(!is.na(gss.swing.hist$guninhome) , gss.swing.hist[, c(1,45)], sum, na.rm=TRUE), c(1, 2))
+tempmar$freq <- tempmar$V1/tempmar2$V1*100
+
+pmar <- ggplot(tempmar[!is.na(tempmar$freq),], aes(x=year, y=freq, group=1, color=arsm))
+pmar <- pmar + geom_smooth() + facet_wrap(~arsm)
+pmar <- pmar +theme_bw()+xlab("Year")+ylab("Personal gun ownership")+theme(legend.position="none")
+pmar
+```
+
+Region:
+
+```{r region, echo=FALSE, message=FALSE, fig.align='center', fig.height=4}
+tempreg <- adply(tapply(gss.swing.hist$gunowned=="Yes", gss.swing.hist[, c(1,6)], sum, na.rm=TRUE), c(1, 2))
+tempreg2 <- adply(tapply(!is.na(gss.swing.hist$guninhome) , gss.swing.hist[, c(1,6)], sum, na.rm=TRUE), c(1, 2))
+tempreg$freq <- tempreg$V1/tempreg2$V1*100
+
+preg <- ggplot(tempreg[!is.na(tempreg$freq),], aes(x=year, y=freq, group=1, color=region))
+preg <- preg + geom_smooth() + facet_wrap(~region)
+preg <- preg +theme_bw()+xlab("Year")+ylab("Personal gun ownership")+theme(legend.position="none")
+preg
+```
+
+Political identity:
+
+```{r polid, echo=FALSE, message=FALSE, fig.align='center', fig.height=2}
+temppolid <- adply(tapply(gss.swing.hist$gunowned=="Yes", gss.swing.hist[, c(1,9)], sum, na.rm=TRUE), c(1, 2))
+temppolid2 <- adply(tapply(!is.na(gss.swing.hist$guninhome) , gss.swing.hist[, c(1,9)], sum, na.rm=TRUE), c(1, 2))
+temppolid$freq <- temppolid$V1/temppolid2$V1*100
+temppolid$polviewscond <- factor(temppolid$polviewscond, levels=c("Conservative", "Moderate", "Liberal"))
+
+ppolid <- ggplot(temppolid[!is.na(temppolid$freq),], aes(x=year, y=freq, group=1, color=polviewscond))
+ppolid <- ppolid + geom_smooth() + facet_wrap(~polviewscond)
+ppolid <- ppolid +theme_bw()+xlab("Year")+ylab("Personal gun ownership")+theme(legend.position="none")
+ppolid
+```
+
+Party identity:
+
+```{r partyid, echo=FALSE, message=FALSE, fig.align='center', fig.height=4}
+temppartyd <- adply(tapply(gss.swing.hist$gunowned=="Yes", gss.swing.hist[, c(1,8)], sum, na.rm=TRUE), c(1, 2))
+temppartyd2 <- adply(tapply(!is.na(gss.swing.hist$guninhome) , gss.swing.hist[, c(1,8)], sum, na.rm=TRUE), c(1, 2))
+temppartyd$freq <- temppartyd$V1/temppartyd2$V1*100
+temppartyd$partyidcond <- factor(temppartyd$partyidcond, levels=c("Republican", "Independent", "Democrat", "Other Party"))
+
+ppartyd <- ggplot(temppartyd[!is.na(temppartyd$freq),], aes(x=year, y=freq, group=1, color=partyidcond))
+ppartyd <- ppartyd + geom_smooth() + facet_wrap(~partyidcond)
+ppartyd <- ppartyd +theme_bw()+xlab("Year")+ylab("Personal gun ownership")+theme(legend.position="none")
+ppartyd
+```
+
+### Attitude towards housing discrimination among white and black household-gun owners and non-owners from 2004 onwards
+
+While looking at the data, I discovered that the question with discriminated the most between young white male gun owners and all others groups of the American society was the 'housing discrimination' question. This question is phrased in the GSS as follows: *Suppose there is a community-wide vote on the general housing issue. There are two possible laws to vote on: a. One law says that a homeowner can decide for himself whom to sell his house to, even if he prefers not to sell to (negroes/blacks/African-Americans). b. The second law says that a homeowner cannot refuse to sell to someone because of their race or color. Which law would you vote for?* The possible answers are "Owner Decides", "Can't Discriminate", "Neither" and "Don't Know".
+
+This question was initially very divisive *throughout* the American society - in 1980, attitudes ranged from just over 20% to over 80% in favour of the "Can't Discriminate" answer in the various age/race/sex/gun-ownership segments of the society. However, in the early 2000s, opinions coalesced in favour of the "Can't Discriminate" answer, to the end result that in 2012, every single segment of the GSS respondents was over 55% in favour of this answer - every single segment **but** young white male gun owners. And for them, the answer was only 40.4% in favour of the anti-discriminatory reply.
+
+```{r housdisc, echo=FALSE, message=FALSE, fig.align='center', fig.height=4}
+gss.swing.spank <- gss.swing[gss.swing$race!="Other"& !is.na(gss.swing$housdisc) & gss.swing$year > 2003,]
+gss.swing.spank$arsg <- factor(gss.swing.spank$arsg, levels=c("OWMG", "OWMN", "OWFG", "OWFN", "YWMG", "YWMN", "YWFG", "YWFN", "OBMG", "OBMN", "OBFG", "OBFN", "YBMG", "YBMN", "YBFG", "YBFN"))
+
+temsp <- adply(tapply(gss.swing.spank$housdisc %in% c("Cant Discriminate"), gss.swing.spank[,c(1,44)], sum, na.rm=TRUE), c(1,2))
+tempsp2 <- adply(tapply(!is.na(gss.swing.spank$housdisc), gss.swing.spank[,c(1,44)], sum, na.rm=TRUE), c(1,2))
+temsp$freq <- temsp$V1/tempsp2$V1*100
+
+
+phd <- ggplot(temsp[!is.na(temsp$freq),], aes(x=year, y=freq, group=1, color=arsg))
+phd <- phd + geom_line() + facet_wrap(~arsg)
+phd <- phd +theme_bw()+xlab("Group")+ylab("Percent 'Can't Discriminate' answers")+theme(legend.position="none")
+suppressMessages(phd)
+```
+
+I wanted to find out whether this particular result was statistically significant.

@@ -1,0 +1,230 @@
+
+note: this file was originally created for a course project (Coursera => Introduction to Statistical Inference, edition Feb 2014)
+
+
+## The Housing Discrimination question
+
+```{r echo=FALSE}
+gun <- read.csv("../data/gss.statwing.gun.txt", header=TRUE, sep="\t")
+gun <- gun[gun$year>2007 & !is.na(gun$housdisc), c(1:4,10,30,44)] 
+```
+
+### Introduction:
+Several weeks ago, I did an analysis of the data on American gun owners and non-owners available in the US Global Social Survey. If you want to take a look at it, it's [here](http://saxfinch.blogspot.com/2014/01/the-young-white-male-gun-owning_29.html). I also have a [thread](https://class.coursera.org/statistics-001/forum/thread?thread_id=2241) about it on the forums. But long story short, I discovered that young (<40 years old) white male American gun owners (YWMG) differ significantly from non-gun owners and other gun owners in several respects. In addition, the question in the GSS that has the most discriminating power when it comes to distinguishing YWMG from *everyone else in the society* is the question of housing discrimination. 
+
+This question is phrased in the GSS as follows: *Suppose there is a community-wide vote on the general housing issue. There are two possible laws to vote on: a. One law says that a homeowner can decide for himself whom to sell his house to, even if he prefers not to sell to (negroes/blacks/African-Americans). b. The second law says that a homeowner cannot refuse to sell to someone because of their race or color. Which law would you vote for?* The possible answers are "Owner Decides", "Can't Discriminate", "Neither" and "Don't Know". According to my analysis, this question was initially very divisive *throughout* the American society - in 1980, attitudes ranged from just over 20% to over 80% in favour of the "Can't Discriminate" answer in the various age/race/sex/gun-ownership segments of the society. However, in the early 2000s, opinions coalesced in favour of the "Can't Discriminate" answer, to the end result that in 2012, every single segment of the GSS respondents was over 55% in favour of this answer - every single segment **but** young white male gun owners. And for them, the answer was only 40.4% in favour of the anti-discriminatory reply.
+
+This result is better visualised on a graph. You can look at the visualisation [here](http://cf.datawrapper.de/UtrOk/2/). I'm also attaching a detailed version of this graph to the project.
+
+There is a huge problem with this graph, though. It doesn't show confidence intervals. Although the automated tool I used to get the results assured me they were significant, I didn't really feel *right* about using them. Mostly because the "opinion" questions in the GSS can have surprisingly small sample sizes, especially if you partition them into such highly granular segments as I did - into age/race/sex/gun-ownership buckets. I actually entered the course to learn how to deal with small sample sizes.
+
+Therefore, my research question for this project would be **to find out whether there is a statistically significant difference between the proportion of young (<40 years old) white male American gun owners in favour of the "Can't Discriminate" answer in the GSS Housing Discrimination question in the 2008, 2010 or 2012 GSS surveys, and the proportion of Americans belonging to other age/race/sex/gun-ownership buckets in favour of this answer**.
+
+And what's in the project for me? Proving that I was right (or not) - the results of *an entire Internet discussion* hangs on the result (just imagine the weight of that particular burden!). What's in it for you? Depends. Are you American? Then you might enjoy learning about your society. If you are not? Please, just bear with me.
+
+
+### Data:
+
+As stated in the Introduction, I will be using data from the Global Social Survey. The GSS is mentioned in the introduction to the peer assessment project - it is a sociological survey used to collect data on demographic characteristics and attitudes of residents of the United States. Data are collected via computer-assisted personal interviews (CAPI), face-to-face interviews, and telephone interviews, and then weighted and processed.
+
+The set of GSS data I will be using is not the one supplied in the project description (that one lacks the Housing Discrimination question data). Instead, I will be using a set of the GSS data made available by a company called Statwing. It can be downloaded from [here](http://blog.statwing.com/wp-content/uploads/2014/01/GSS-Data-for-Statwing-Prize.csv.gz)(warning: it's a 77MB download), and the methodological notes are [here](http://blog.statwing.com/open-data-the-general-social-survey-40-years-of-results).
+
+The cases in the GSS are individual adult American citizens, so the results will be generalisable to the entire population - provided, obviously, that the samples will be representative! Similarly, results for each segment of the population should be generalisable to that segment, again with the sample-representativeness caveat. As the GSS is an observational study (a survey), I do not purport to establish any causal link between gun ownership and attitude towards housing discrimination - any relationship will be relational only.
+  
+  
+**As for the precise variables used:**   
+I will be using only GSS data from the 2008, 2010 and 2012 studies. This is because, if you look at the graph that started this project, the change in the YWMG attitudes seems to be a recent development.
+
+I will have done some preprocessing to the data by the time you look at it. As mentioned above, I will be segmenting the population into 24 buckets based on the following variables:
+- age - either <40 years old ("young", Y) or >=40 years old ("old", O)
+- race - "White" (W), "Black" (B)  or "Other" (O)
+- sex - "Female" (F) or "Male" (M)
+- gun ownership - "Yes" (G) or "No" (N)
+
+In the [Codebook](https://d396qusza40orc.cloudfront.net/statistics%2Fproject%2Fgss1.html), these variables are called, respectively, $age, $race, $sex and $guninhome. There is an important fact about the $guninhome variable, in that this is *household* gun ownership (i.e. if there is a gun in the house). This is important because men own on average around 90% of the guns they report in their households, but women, depending on age, own from 30-50% of the guns they report in their households. So, the results are not translatable to *personal* gun ownership.
+
+In the Codebook, it's stated that the $guninhome variable can also take the value "Refused", or can have no answer at all. I've removed these cases altogether - on average, 1-2 persons a year refused to answer this question, and since I'm interested in gun ownership, the cases where it's not defined are simply dead weight for this analysis. I have also removed from the analysis all the cases with unreported age/race/sex, for the same reason.
+
+Based on the age/race/sex/gun-ownership segmenting, I have created a combined categorical variable called "bucket". This will be the explanatory variable in my analysis. Its levels look, for example, like this:
+YWFN - young white female non-gun owner
+or like this
+OOMG - old "other race" male gun owner.
+
+This is for convenience only, because otherwise, the graphs and tables would be hard to read. The original $age/$race/$sex/$guninhome variables are still in the file if you want to look at them and compare them to this combined variable.
+
+Finally, the response variable in my analysis will be $housdisc. This is a variable which is not found in the Codebook, since it's not found in the version of the GSS file made available by the Course Staff. As mentioned above, $housdisc is a categorical variable that describes the respondent's answer to the question I posted in the Introduction:
+*Suppose there is a community-wide vote on the general housing issue. There are two possible laws to vote on: a. One law says that a homeowner can decide for himself whom to sell his house to, even if he prefers not to sell to (negroes/blacks/African-Americans). b. The second law says that a homeowner cannot refuse to sell to someone because of their race or color. Which law would you vote for?* 
+The possible answers are "Owner Decides", "Can't Discriminate", "Neither" and "Don't Know". Again, for obvious reasons, I have removed all cases with a missing value for this variable.
+
+
+### Exploratory data analysis:
+After the preprocessing, the dataset contains 3326 cases. They are distributed across the various buckets as follows:
+
+```{r fig.height=4, fig.width=10}
+table(gun$arsg, gun$housdisc)
+plot(gun$arsg, gun$housdisc, xlab="Population segment", ylab="Attitude to housing discrimination")
+```
+
+
+### Inference:
+My goal in this analysis is to do two things:
+- to compare the differences of proportions of the "Can't Discriminate" and "Owner Decides" outcomes between the YWMG group and all other groups of the society. The null hypothesis in each case is that they are the same (the difference is zero), while the alternative is that they are different;
+- to check overall variability in the sample. The null hypothesis is that there is no variability, the alternative is that variability exists.
+
+The preferred method for comparing the differences of proportions is pairwise hypothesis testing and confidence interval measurement based on the Central Limit Theorem. The preferred method for checking overall sample variability is the chi-squared test.
+
+However, the exploratory analysis clearly shows that the samples for some segments of the society are extremely small. Lecture 5.1.2. states that CLT only applies when the numbers of both failures and successes are >=10, and lecture 5.4.1. that the chi-square test requires at least 5 cases for each particular scenario. This means that:
+- I can do the CLT-based pairwise difference-of-proportions hypothesis tests, as well as confidence interval measurement, for the OBMN, OWFG, OWFN, OWMG, OWMN, YBFN, YBMN, YOFN, YOMN, YWFG, YWFN, YWMN population buckets;
+- I can do the chi-squared test of overall variability for  OBFN, OBMN, OOFN, OOMN, OWFG, OWFN, OWMG, OWMN, YBFN, YBMN, YOFN, YOMN, YWFG, YWFG, YWFN, YWMG, YWMN provided I remove the "Neither" and "Don't Know" columns from the dataset. 
+
+However, for some groups (OBFG, OBFN, OBMG, OOFG, OOFN, OOMG, OOMN, YBFG, YBMG, YOFG, YOMG), the only way to do pairwise comparisons is via simulation, and for some of these (OBFG, OBMG, OOFG, OOMG, YBFG, YBMG, YOFG) the chi-squared test is also unavailable. It frankly sucks that all nonwhite young gun owners are in the second group, but, as I said in the beginning, this is the result of the in-depth partitioning.
+
+For the chi-squared test, it is disputable whether I can remove the "Neither" and "Don't Know" columns from the dataset. However, YWMGs have a very low value, 3, in the "Neither" column, so the alternative is not doing any chi-squared test at all.
+
+Let's start from the overall chi-squared test.
+
+**Chi-squared test**
+The following are the results of the chi-squared test for the appropriate buckets:
+```{r echo=FALSE}
+subsetchi<-gun[gun$arsg!="OBFG"&gun$arsg!="OBMG"&gun$arsg!="OOFG"&gun$arsg!="OOMG"&gun$arsg!="YBFG"&gun$arsg!="YBMG"&gun$arsg!="YOFG"&gun$arsg!="YOMG"&gun$housdisc!="Neither"&gun$housdisc!="Dont Know",]
+subsetchi$arsg<-factor(subsetchi$arsg)
+subsetchi$housdisc<-factor(subsetchi$housdisc)
+```
+```{r}
+table(subsetchi$arsg, subsetchi$housdisc)
+chisq.test(subsetchi$arsg, subsetchi$housdisc)
+
+```
+The conclusion from the chi-squared test is that **the null hypothesis is rejected**, i.e. that **there exists variability in the sample**.
+
+**Pairwise comparisons via CLT hypothesis testing**  
+The following are the results for the two-sided hypothesis tests via CLT, using "Can't Discriminate" as the success value:
+
+```{r echo=FALSE}
+subsetpair<-gun[gun$arsg!="OBFG"&gun$arsg!="OBFN"&gun$arsg!="OBMG"&gun$arsg!="OOFG"&gun$arsg!="OOFN"&gun$arsg!="OOMG"&gun$arsg!="OOMN"&gun$arsg!="YBFG"&gun$arsg!="YBMG"&gun$arsg!="YOFG"&gun$arsg!="YOMG"&gun$arsg!="YWMG",c(7,6)]
+ywmg<-gun[gun$arsg=="YWMG", c(7,6)]
+subsetpair$arsg<-factor(subsetpair$arsg)
+
+ywmgsucc<-sum(ywmg$housdisc=="Cant Discriminate")
+ywmgtot<-sum(!is.na(ywmg$housdisc))
+ywmgprob<-ywmgsucc/ywmgtot
+
+temp<-data.frame(obsprop=NA, diff=NA, zvalue=NA, pvalue=NA)
+
+for (i in levels(subsetpair$arsg))
+{
+  succ<-sum(subsetpair$housdisc[subsetpair$arsg==i]=="Cant Discriminate")
+  tot<-sum(!is.na(subsetpair$housdisc[subsetpair$arsg==i]))
+  sprob<-succ/tot  
+  point<-ywmgprob-sprob
+  pooled<-(succ+ywmgsucc)/(tot+ywmgtot)
+  se<-sqrt(pooled*(1-pooled)/ywmgtot+pooled*(1-pooled)/tot)
+  z<-point/se
+  pval<-2*pnorm(abs(z), lower.tail=FALSE)
+  temp[i,1]<-sprob
+  temp[i,2]<-point
+  temp[i,3]<-z
+  temp[i,4]<-pval
+}
+pairwise_results<-temp[2:nrow(temp),]
+```
+```{r}
+print (pairwise_results)
+```
+In these results, "obsprop" is the observed proportion of successes (i.e. "Can't Discriminate"s) in each bucket, "diff" is the difference between the YWMG proportion and the proportion for the respective bucket, zvalue is the Z value, and pvalue is the p-value.
+
+For each of these population segments, **the null hypothesis is rejected**, as the p-value is below 0.05 (and, because it's fair to ask: yes, I did remember to multiply by 2 for a two-sided hypothesis). For each of these population segments, **the value is negative**, which means that the proportion of YWMGs in favour of the "Can't Discriminate" response is **lower** than the in-favour proportion of the compared bucket.
+  
+**Pairwise comparisons via CLT confidence intervals calculation**  
+The following are the results for the calculation of the 95% confidence intervals via CLT, using "Can't Discriminate" as the success value/condition:
+```{r echo=FALSE}
+subsetpair<-gun[gun$arsg!="OBFG"&gun$arsg!="OBFN"&gun$arsg!="OBMG"&gun$arsg!="OOFG"&gun$arsg!="OOFN"&gun$arsg!="OOMG"&gun$arsg!="OOMN"&gun$arsg!="YBFG"&gun$arsg!="YBMG"&gun$arsg!="YOFG"&gun$arsg!="YOMG"&gun$arsg!="YWMG",c(7,6)]
+ywmg<-gun[gun$arsg=="YWMG", c(7,6)]
+subsetpair$arsg<-factor(subsetpair$arsg)
+
+ywmgsucc<-sum(ywmg$housdisc=="Cant Discriminate")
+ywmgtot<-sum(!is.na(ywmg$housdisc))
+ywmgprob<-ywmgsucc/ywmgtot
+temp<-data.frame(obsprop=NA, diff=NA, lwr=NA, hghr=NA)
+
+for (i in levels(subsetpair$arsg))
+{
+  succ<-sum(subsetpair$housdisc[subsetpair$arsg==i]=="Cant Discriminate")
+  tot<-sum(!is.na(subsetpair$housdisc[subsetpair$arsg==i]))
+  sprob<-succ/tot  
+  point<-ywmgprob-sprob
+  se<-sqrt(sprob*(1-sprob)/tot+ywmgprob*(1-ywmgprob)/ywmgtot)
+  me<-qnorm(0.975)*se
+  
+  temp[i,1]<-sprob
+  temp[i,2]<-point
+  temp[i,3]<-point-me
+  temp[i,4]<-point+me
+}
+pairwise_results_ci<-temp[2:nrow(temp),]
+
+```
+```{r}
+print(pairwise_results_ci)
+```
+In these results, "obsprop" is the observed proportion of successes (i.e. "Can't Discriminate"s) in each bucket, "diff" is the difference between the YWMG proportion and the proportion for the respective bucket, "lwr" is the lower boundary of the 95% confidence interval, "hghr" is the higher boundary of the 95% confidence interval.
+
+Again, **for none of these values, the confidence interval envelopes zero on both sides, as it would if the null hypothesis were not to be rejected**. The value for the old-white-male-gun-owning (OWMG) bucket is close, but it is still outside of zero.
+
+The confidence intervals support also the other finding from the hypothesis test, i.e. **for each of the buckets, the proportion of YWMGs in favour of the "Can't Discriminate" answer is lower than the proportion of respondents from the other bucket**.
+
+
+**Pairwise comparisons via simulation**  
+The following are (precalculated - you can try to run the code yourself, it works on its own, but not in the markdown file :-/) results of 100,000 simulations of the difference between the proportion of YWMGs in favour of the "Can't Discriminate" response and the in-favour proportions of the respective buckets:
+
+```{r echo=FALSE}
+subsetpair<-gun[gun$arsg=="OBFG"|gun$arsg=="OBFN"|gun$arsg=="OBMG"|gun$arsg=="OOFG"|gun$arsg=="OOFN"|gun$arsg=="OOMG"|gun$arsg=="OOMN"|gun$arsg=="YBFG"|gun$arsg=="YBMG"|gun$arsg=="YOFG"|gun$arsg=="YOMG",c(7,6)]
+subsetpair<-subsetpair[subsetpair$housdisc!="Neither"&subsetpair$housdisc!="Dont Know",]
+subsetpair$arsg<-factor(subsetpair$arsg)
+subsetpair$housdisc<-factor(subsetpair$housdisc)
+
+ywmg<-gun[gun$arsg=="YWMG"&gun$housdisc!="Dont Know", c(7,6)]
+ywmgsucc<-sum(ywmg$housdisc=="Cant Discriminate")
+ywmgtot<-sum(!is.na(ywmg$housdisc))
+ywmgprob<-ywmgsucc/ywmgtot
+
+#temp<-data.frame(totsamplesize=NA, obsprop=NA, actdiff=NA, simmedian=NA, simsd=NA, pvalue=NA)
+
+#for (i in levels(subsetpair$arsg))
+#{
+#  succ<-sum(subsetpair$housdisc[subsetpair$arsg==i]=="Cant Discriminate")
+#  tot<-sum(!is.na(subsetpair$housdisc[subsetpair$arsg==i]))
+#  pooledsucc<-succ+ywmgsucc
+#  pooledtot<-tot+ywmgtot
+#  sprob<-succ/tot
+#  pool<-factor(c(rep("cant", pooledsucc), rep("owner", pooledtot-pooledsucc)))
+  
+#  for (n in 1:100000){
+#    sample<-sample(pool, pooledtot)
+#    diff[n]<- sum(sample[1:ywmgtot]=="cant")/ywmgtot-sum(sample[ywmgtot+1:tot]=="cant")/tot    
+#  }
+#  temp[i,"actsamplesize"]<-tot
+#  temp[i,"actprop"]<-sprob
+#  temp[i,"actdiff"]<-ywmgprob-sprob
+#  temp[i,"simmedian"]<-median(diff)
+#  temp[i,"simsd"]<-sd(diff)
+#  temp[i,"pvalue"]<-(sum(diff>=abs(ywmgprob-sprob))+sum(diff<(-abs(ywmgprob-sprob))))/length(diff)  
+#}
+#simulation_results<-temp[2:nrow(temp),]
+simresults<-read.csv("../data/simresults.txt", header=TRUE)
+```
+```{r}
+print (simresults)
+```
+In these results, "totsamplesize" is the total sample size for each bucket, "obsprop" is the observed proportion of successes (i.e. "Can't Discriminate"s) in each bucket, "diff" is the difference between the YWMG proportion and the proportion for the respective bucket,"simmedian" is the median simulated difference, "simsd" is the standard deviation of the simulated difference, and "pvalue" is the p-value. As one can see, **there are three buckets for which the null hypothesis cannot be rejected: old "other race" gun-owning women, old "other race" gun-owning men, and young "other race" gun-owning men**.
+
+
+### Conclusion:
+
+The conclusion from this analysis seems to be that I had been generally right, although with some potential for misgivings and counterarguments. The null hypothesis can be rejected for the great majority of the buckets I analysed, with the exception of old “other race” gun-owning women, old “other race” gun-owning men, and young “other race” gun-owning men, three segments of the society for whom their respective GSS buckets were characterised by small sample sizes. To put the result in sharper relief, these three buckets combined constituted 28 out of all 3326 cases, i.e. 0.8%.
+
+Hence, opposition to anti-housing discrimination laws can be said to be a feature of the American young white male gun-owning demographic that distinguishes it from almost all other segments of the American society.
+
+Now, what this means in practice is rather difficult to say - I especially would not want to draw any far-out conclusions about a huge group of people from a single analysis. It's possible that this result is indicative of some covert racism expressing itself through libertarian values (a “dirty” face of the gun culture). It's also very possible that it is not. I think, though that the presence of this result indicates at least that surveying race-related issues through a property-rights prism may be a fruitful venue of research for American researchers.
+
+Another venue of possible research could involve obtaining larger samples of responses to this same particular question in the demographics with small response counts. The GSS was designed to provide an overall picture of the American society, not of its subsets. It is its strength - it is very general, not tailored to any particular question. However, in analyses like this, when one wants to compare the different subsets, it can be also a bit of a weakness.

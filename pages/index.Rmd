@@ -1,0 +1,56 @@
+---
+title: "Index"
+author: "Iga Korneta"
+date: "Friday, August 15, 2014"
+output: html_document
+---
+
+Details research into gun ownership statistics data from the Global Social Survey and the BFRSS (January-May 2014). There were three phases of this research: exploratory analysis; in-depth examination of the Housing Discrimination question; and examination of statewide BFRSS data.
+
+### Raw data
+
+The raw data for this analysis included: 
+
+* two sets of GSS data:
+
+  * a set of made available for the Coursera [Data Analysis and Statistical Inference](https://www.coursera.org/course/statistics) course, edition Feb 17, 2014; downloadable from [here](https://d396qusza40orc.cloudfront.net/statistics/project/gss.Rdata); codebook from [here](https://d396qusza40orc.cloudfront.net/statistics%2Fproject%2Fgss1.html); (the "course" set)
+  
+  * a set made available by Statwing; downloadable from [here](http://blog.statwing.com/wp-content/uploads/2014/01/GSS-Data-for-Statwing-Prize.csv.gz); methodological notes from [here](http://blog.statwing.com/open-data-the-general-social-survey-40-years-of-results).
+  
+The main difference between the two sets was that the "Statwing" set has more variables, but the "course" set has more years.
+
+* CDC BRFSS data from 1996, 1997, 1998, 2001, 2002 and 2004; download from [here](http://www.cdc.gov/brfss/annual_data/annual_data.htm) in SAS XPORT format.
+
+
+### Downloaded/Processed data
+
+Found in /data:
+
+* gss.course.csv - the "course" set of GSS data;
+
+* gss.statwing.txt - the "Statwing" set with altered format of variable names to allow R to read the file; also with added NA markers for missing values;
+
+* gss.statwing.gun.txt - the "Statwing" dataset limited only to records with determined gun ownership status (i.e. not NA); dataset limited only to specific variables; dataset with specific variables added (singmar - describes marital status as "married" or "single"; ars - describes the age/race/sex status; arsg - describes the age/race/sex/gun ownership status; age has been divided into "young" (<40yo) or "old" (>=40); race as in the Race (Original) variable, i.e. White/Black/Other);
+
+* brfs.data.txt - processed BRFSS data: combined, limited only to year/state/age/sex/race/gun ownership variables, with an added composite ars variable.
+
+Additional helpful data (also in /data):
+
+* stats.crime.txt - US crime statistics 1960-2012, from [The Disaster Center](http://www.disastercenter.com/crime/uscrime.htm);
+
+* stats.homicide.state.txt - US homicide rates by state, from [DeathPenaltyInfo](http://www.deathpenaltyinfo.org/murder-rates-nationally-and-state);
+
+* stats.density.state.txt - population density of different states, from [Wikipedia](http://en.wikipedia.org/wiki/List_of_U.S._states_by_population_density);
+
+* brfs.state.code.txt - codebook for the BRFSS state codes;
+
+* simresults.txt - file with simulation results for the Housing Discrimination analysis.
+
+
+### Results
+
+* [Descriptive/Exploratory Analysis (GSS Data)](http://ikorneta.github.io/gunstats/pages/expgss.html)
+
+* [Descriptive/Exploratory Analysis (BRFSS Data)](http://ikorneta.github.io/gunstats/pages/expbrfss.html)
+
+* [The Housing Discrimination Question](http://ikorneta.github.io/gunstats/pages/housdisc.html)

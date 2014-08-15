@@ -1,0 +1,145 @@
+---
+title: "BRFSS Data, Gun Ownership - Descriptive/Exploratory Analysis"
+author: "Iga Korneta"
+date: "Friday, August 15, 2014"
+output: html_document
+---
+
+### Introduction
+
+The CDC Behavioural Risk Factor Surveillance System monitors US health data on state level. In 1996, 1997, 1998, 2001, 2002 and 2004, CDC asked questions about gun ownership (in households). So, it is possible to use these data to visualise statewide gun ownership levels in the various groups of the American society.
+
+```{r loadchunk, echo=FALSE, eval=FALSE, message=FALSE}
+download.file('ftp://ftp.cdc.gov/pub/data/brfss/CDBRFS96XPT.zip', 'xpt96.xpt')
+xpt96 <- read.xport('xpt96.xpt')
+xptmin96 <- xpt96[!is.na(xpt96$FIREARM2), c(1, 8, 57, 236, 75, 207)]
+
+download.file('ftp://ftp.cdc.gov/pub/data/brfss/CDBRFS97XPT.zip', 'xpt97.xpt')
+xpt97 <- read.xport('xpt97.xpt')
+xptmin97 <- xpt97[!is.na(xpt97$FIREARM2), c(1,8,52,240, 69, 208)]
+
+download.file('ftp://ftp.cdc.gov/pub/data/brfss/CDBRFS98XPT.zip', 'xpt98.xpt')
+xpt98 <- read.xport('xpt98.xpt')
+xptmin98 <- xpt98[!is.na(xpt98$FIREARM2), c(1,9,61,267, 79, 225)]
+
+download.file('ftp://ftp.cdc.gov/pub/data/brfss/CDBRFS01XPT.zip', 'xpt01.xpt')
+xpt01 <- read.xport('xpt01.xpt')
+xptmin01 <- xpt01[!is.na(xpt01$FIREARM3), c(1,12,55, 254, 70, 54)]
+
+download.file('ftp://ftp.cdc.gov/pub/data/brfss/CDBRFS02XPT.zip', 'xpt02.xpt')
+xpt02 <- read.xport('xpt02.xpt')
+xptmin02 <- xpt02[!is.na(xpt02$FIREARM4), c(1, 11, 54, 283, 68, 99)]
+
+download.file('ftp://ftp.cdc.gov/pub/data/brfss/CDBRFS04XPT.zip', 'xpt04.xpt')
+xpt04 <- read.xport('xpt04.xpt')
+xptmin04 <- xpt[!is.na(xpt04$FIREARM4), c(1, 11, 52, 266, 67, 106)]
+
+colnames(xptmin96) <- c("Code", "Year", "Age", "Race", "Sex", "GunInHome")
+colnames(xptmin97) <- c("Code", "Year", "Age", "Race", "Sex", "GunInHome")
+colnames(xptmin98) <- c("Code", "Year", "Age", "Race", "Sex", "GunInHome")
+colnames(xptmin99) <- c("Code", "Year", "Age", "Race", "Sex", "GunInHome")
+colnames(xptmin01) <- c("Code", "Year", "Age", "Race", "Sex", "GunInHome")
+colnames(xptmin02) <- c("Code", "Year", "Age", "Race", "Sex", "GunInHome")
+colnames(xptmin04) <- c("Code", "Year", "Age", "Race", "Sex", "GunInHome")
+
+data <- rbind(xptmin96, xptmin97, xptmin98, xptmin01, xptmin02, xptmin04)
+statecode <- read.csv('../data/state.code.txt', sep='\t')
+data <- merge(data, state.code, by.x="Code", by.y="Code", all.x=TRUE)
+data <- data[,c(2:7)]
+data$Year <- ifelse(data$Year=="96", "1996", data$Year)
+data$Year <- ifelse(data$Year=="97", "1997", data$Year)
+data$Year <- ifelse(data$Year=="98", "1998", data$Year)
+data$Year <- ifelse(data$Year=="2003", "2002", data$Year)
+data$Year <- ifelse(data$Year=="2005", "2004", data$Year)
+data$Group <- ifelse(data$Age < 40, "Y", "O")
+data$Group <- ifelse(data$Race=="1", paste0(data$Group,"W"), ifelse(data$Race=="2", paste0(data$Group,"B"), paste0(data$Group,"O")))
+data$Group <- ifelse(data$Sex=="1", paste0(data$Group, "M"), paste0(data$Group, "F"))
+data$GunInHome <- ifelse(data$GunInHome=="1", "Yes", ifelse(data$GunInHome=="2", "No", "Other"))
+
+write.csv(data, "../data/brfs.data.txt", row.names=FALSE)
+```
+
+```{r adddata, echo=FALSE, message=FALSE, eval=TRUE}
+library(plyr)
+###more data loading
+data <- read.csv("../data/brfs.data.txt")
+data$Year <- as.factor(data$Year)
+
+temp1 <- adply(tapply(data$GunInHome=="Yes", data[,c(1,6,7)], sum, na.rm=TRUE), c(1,2))[,c(1:2, 5:16)]
+temp2 <- adply(tapply(!is.na(data$GunInHome), data[,c(1,6,7)], sum, na.rm=TRUE), c(1,2))[,c(1:2, 5:16)]
+
+temp1$Total <- adply(tapply(data$GunInHome=="Yes", data[,c(1,6)], sum, na.rm=TRUE), c(1, 2))[,c(3)]
+temp2$Total <- adply(tapply(!is.na(data$GunInHome), data[,c(1,6)], sum, na.rm=TRUE), c(1, 2))[,c(3)]
+
+temp3 <- cbind(Year=temp1[,1], State=temp1[,2], temp1[,3:15]/temp2[,3:15]*100)
+temp3 <- temp3[-which(is.na(temp3$Total)),]
+
+homicide <- read.csv('../data/stats.homicide.state.txt', sep='\t')
+rownames(homicide) <- homicide$YEAR
+for (i in 1:length(row.names(temp3))){temp3[i,"homicide"] <- homicide[as.character(temp3[i,"State"]), paste0("X", temp3[i, "Year"])]}
+
+dens <- read.delim("../data/stats.density.state.txt")
+temp3$State <- gsub(" ", "", temp3$State)
+dens$state <- gsub(" ", "", dens$state)
+temp3 <- merge(temp3, dens, by.x="State", by.y="state", all.x=TRUE)
+temp3 <- temp3[!temp3$State %in% c("DistrictofColumbia", "PuertoRico"),]
+temp3$dclass <- as.factor(temp3$dclass)
+temp3$dclass2 <- ifelse(temp3$density<10.0, "1", (ifelse(temp3$density<100, "2", ifelse(temp3$density<150, "3", "4"))))
+```
+
+### Visualisation
+
+This plot shows total gun ownership (on the X axis) vs. homicide rates (on the Y axis). It is coloured by population density.
+
+```{r plot1, echo=FALSE, message=FALSE, eval=TRUE, fig.align='center', fig.height=3}
+library(ggplot2)
+
+dclassmap2 <- c("<10/sqkm", "<100/sqkm", "<150/sqkm", "<500/sqkm")
+plot1 <- ggplot(temp3, aes(x=Total, y=homicide, color=dclassmap2[as.factor(dclass2)]))
+plot1 <- plot1 + geom_point(size=4) + theme_bw() + scale_color_discrete(name="Population density")
+plot1 <- plot1 + xlab("Gun ownership (all groups)") + ylab("Homicide rate") 
+plot1
+```
+
+This plot is slightly more granulated when it comes to states. The colouring will be repeated in the following plots, to illustrate the distortions of the picture.
+
+```{r plot2, echo=FALSE, message=FALSE, eval=TRUE, fig.align='center', fig.height=3}
+dclassmap <- c("AK WY MT ND SD ID", "NM NV", "most", "IL CA", "PA OH DE", "FL", "NY MD CN MA RI NJ")
+plot2 <- ggplot(temp3, aes(x=Total, y=homicide, color=factor(dclassmap[dclass], levels=dclassmap)))
+plot2 <- plot2 + geom_point(size=4) + theme_bw() + scale_colour_discrete(name="States")
+plot2 <- plot2 + xlab("Gun ownership (all groups)") + ylab("Homicide rate") 
+plot2
+```
+
+These plots show that the percent gun ownership vs. homicide rate plot is vastly different for most age/sex subgroups of the "black" racial group.
+
+```{r plot3, echo=FALSE, message=FALSE, eval=TRUE, fig.align='center', fig.height=6, fig.width=12}
+library(reshape2)
+temp3.long <- melt(temp3[, c(-15)], c("State", "Year", "homicide", "density", "dclass", "dclass2"))
+temp3.long <- temp3.long[!(temp3.long$variable %in% c("OOM", "OOF", "YOM", "YOF")),]
+temp3.long$variable <- factor(temp3.long$variable, levels=c("OWM", "OWF", "YWM", "YWF", "OBM", "OBF", "YBM", "YBF"))
+
+plot3 <- ggplot(temp3.long[!is.na(temp3.long$value),], aes(x=value, y=homicide, color=factor(dclassmap[dclass], levels=dclassmap)))
+plot3 <- plot3 + geom_point(size=4) + theme_bw() + scale_colour_discrete(name="States")
+plot3 <- plot3 + xlab("Gun ownership") + ylab("Homicide rate") 
+plot3 <- plot3 + facet_wrap(~variable, nrow=2) + theme(legend.position="top")
+plot3
+```
+
+### Model
+
+The simplest linear model routinely explains 30-40% of the variability of homicide rates on the testing set (logdens = logarithm of population density):
+
+```{r model1, echo=FALSE, message=FALSE, eval=TRUE}
+library(caret)
+temp3$logdens <- log(temp3$density)
+inTrain <- createDataPartition(y=temp3$homicide, p=0.7, list=FALSE)
+training <- temp3[inTrain,]
+testing <- temp3[-inTrain,]
+modFit <- train(homicide~OWM+OWF+YWM+YWF+YBM+logdens, data=training, method="lm")
+pred <- predict(modFit$finalModel, testing)
+```
+
+```{r model2, echo=TRUE, message=FALSE, eval=TRUE}
+summary(modFit$finalModel)
+```

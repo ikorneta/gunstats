@@ -1,0 +1,51 @@
+state	density	dclass	dclass2
+Alaska	0.5	1	1
+Wyoming 	2.3	1	1
+Montana	2.7	1	1
+North Dakota	4	1	1
+South Dakota 	4.3	1	1
+Idaho 	7.5	1	1
+New Mexico 	6.6	2	2
+Nebraska 	9.4	3	2
+Nevada 	9.8	2	2
+Utah 	13.6	3	2
+Kansas 	13.7	3	2
+Oregon 	15.8	3	2
+Maine 	16.6	3	2
+Colorado	19.6	3	2
+Iowa 	21.4	3	2
+Oklahoma 	21.7	3	2
+Arkansas 	22	3	2
+Arizona 	22.5	3	2
+Mississippi	24.6	3	2
+Minnesota 	26.3	3	2
+Vermont 	26.3	3	2
+West Virginia	29.8	3	2
+Missouri 	33.9	3	2
+Alabama 	36.9	3	2
+Texas 	39.1	3	2
+Washington 	40.5	3	2
+Wisconsin 	40.9	3	2
+Louisiana	41.3	3	2
+Kentucky	43	3	2
+New Hampshire	57.1	3	2
+Tennessee 	60.8	3	2
+South Carolina 	61.3	3	2
+Georgia 	67.1	3	2
+Michigan 	67.6	3	2
+Indiana 	70.8	3	2
+North Carolina 	78.2	3	2
+Virginia 	80.8	3	2
+Ohio	109.3	5	2
+Pennsylvania	110.2	5	2
+Florida 	140.8	6	2
+Hawaii 	84.4	4	3
+Illinois 	89.6	4	3
+California 	95	4	3
+New York	161	7	3
+Delaware 	183.4	5	2
+Maryland	235.8	7	3
+Connecticut 	286.7	7	3
+Massachusetts 	331.3	7	3
+Rhode Island 	392.7	7	3
+New Jersey 	467.2	7	3
